@@ -5,6 +5,10 @@ import bcrypt from "bcrypt";
 import crypto from "crypto";
 import { sendVerificationCode } from "../utils/sendVerificationCode.js";
 import { sendToken } from "../utils/sendToken.js";
+import { sendEmail } from "../utils/sendEmail.js";
+import { generateForgotPasswordEmailTemplate } from "../utils/emailTemplates.js";
+
+
 
 export const register = catchAsyncErrors(async(req,res , next ) => {
     try {
@@ -131,3 +135,42 @@ export const getUser = catchAsyncErrors(async(req, res , next) => {
         user,
     })
 })
+
+export const forgotPassword = catchAsyncErrors(async(req, res , next) => {
+    if(!req.body.email){
+        return next(new ErrorHandeler("Please enter your email addfress.", 400));
+    }
+    const user = await User.findOne({
+        email: req.body.email,
+        accountVerified: true,
+    });
+    if(!user){
+        return next(new ErrorHandeler("User not found with this email.", 404));
+    }
+
+    const resetToken = user.getResetPasswordToken();
+
+    await user.save({ validateModifiedOnly: true});
+
+    const resetPasswordUrl = `${process.env.FRONTEND_URL}
+    /password/reset/${resetToken}`;
+
+    const message = generateForgotPasswordEmailTemplate(resetPasswordUrl);
+
+    try {
+        await sendEmail({
+            email: user.email,
+            subject: "Library Management System Password Reset Request",
+            message,
+        });
+        res.status(200).json({
+            success: true,
+            message: `Email sent to ${user.email} with password reset instructions.`,
+        })
+    } catch (error) {
+        user.resetPasswordToken = undefined;
+        user.resetPasswordExpire = undefined;
+        await user.save({ validateBeforeSave: false});
+        return next(new ErrorHandeler(error.message, 500));
+    }
+});
