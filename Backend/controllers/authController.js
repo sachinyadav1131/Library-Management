@@ -7,6 +7,7 @@ import { sendVerificationCode } from "../utils/sendVerificationCode.js";
 import { sendToken } from "../utils/sendToken.js";
 import { sendEmail } from "../utils/sendEmail.js";
 import { generateForgotPasswordEmailTemplate } from "../utils/emailTemplates.js";
+import { getSystemErrorMap } from "util";
 
 
 
@@ -134,7 +135,7 @@ export const getUser = catchAsyncErrors(async(req, res , next) => {
         success: true,
         user,
     })
-})
+});
 
 export const forgotPassword = catchAsyncErrors(async(req, res , next) => {
     if(!req.body.email){
@@ -173,4 +174,62 @@ export const forgotPassword = catchAsyncErrors(async(req, res , next) => {
         await user.save({ validateBeforeSave: false});
         return next(new ErrorHandeler(error.message, 500));
     }
+});
+
+export const resetPassword = catchAsyncErrors(async(req , res , next) => {
+    const {token} = req.params;
+    const resetPasswordToken = crypto
+    .createHash("sha256")
+    .update(token)
+    .digest("hex");
+
+    const user = await User.findOne({
+        resetPasswordToken,
+        resetPasswordExpire: { $gt: Date.now()},
+    });
+    if(!user){
+        return next(new ErrorHandeler("Reset password token is invalid or expired.", 400));
+    }
+    if(req.body.password !== req.body.confirmPassword){
+        return next(new ErrorHandeler("Password do not match.", 400));
+    }
+    if(req.body.password.length < 8 || req.body.password.length > 16){
+        return next(new ErrorHandeler("Password must be between 8 and 16 characters.", 400));
+    }
+    const hashedPassword = await bcrypt.hash(req.body.password, 10);
+    user.password = hashedPassword;
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpire = undefined;
+
+    await user.save({ validateModifiedOnly: true});
+
+    sendToken(user , 200 , "Password reset successfully", res);
+});
+
+export const updatePassword = catchAsyncErrors(async(req, res, next) => {
+     const user = await User.findById(req.user._id).select("+password");
+        const { currentPassword , newPassword , confirmNewPassword} = req.body;
+        if(!currentPassword || !newPassword || !confirmNewPassword){
+            return next(new ErrorHandeler("Please enter all fields.", 400));
+        }
+        const isPasswordMatched = await bcrypt.compare(currentPassword , user.password);
+        if(!isPasswordMatched){
+            return next(new ErrorHandeler("Current password is incorrect.", 400));
+        }
+        if(newPassword.length < 8 
+            ||newPassword.length > 16){
+            return next(new ErrorHandeler("Password must be between 8 and 16 characters.",400));
+        }
+        if(newPassword !== confirmNewPassword){
+            return next(new ErrorHandeler("New password and confirm password do not match.", 400));
+        }
+
+        const hashedPassword = await bcrypt.hash(newPassword , 10);
+        user.password = hashedPassword;
+        await user.save({ validateModifiedOnly: true });
+
+        res.status(200).json({
+            success: true,
+            message: "Password updated successfully.",
+        })
 });
