@@ -1,18 +1,22 @@
-import React from "react";
-import logo_with_title from "../assets/logo-with-title.png";
-import logoutIcon from "../assets/logout.png";
-import closeIcon from "../assets/white-close-icon.png";
-import dashboardIcon from "../assets/element.png";
-import bookIcon from "../assets/book.png";
-import catalogIcon from "../assets/catalog.png";
-import settingIcon from "../assets/setting-white.png";
-import usersIcon from "../assets/people.png";
+import React, { useEffect } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import { toast } from "react-toastify";
+
+// --- REACT ICONS IMPORTS ---
+import { MdSpaceDashboard, MdLogout, MdMenuBook } from "react-icons/md";
+import { FaBook, FaUsers } from "react-icons/fa";
+import { IoMdSettings, IoMdClose } from "react-icons/io";
 import { RiAdminFill } from "react-icons/ri";
 
-const SideBar = ({ isSideBarOpen, setIsSideBarOpen, setSelectedComponent }) => {
-  const dispatch = useDispatch();
-  const { addNewAdminPopup } = useSelector((state) => state.popup);
+// Redux Actions 
+import { logout, resetAuthSlice } from "../store/slices/authSlice";
 
+// We keep the logo as an image because it's your specific brand asset
+import logo_with_title from "../assets/logo-with-title.png";
+
+const SideBar = ({ isSideBarOpen, setIsSideBarOpen, selectedComponent, setSelectedComponent }) => {
+  const dispatch = useDispatch();
+  
   const { loading, error, message, isAuthenticated, user } = useSelector(
     (state) => state.auth
   );
@@ -30,87 +34,138 @@ const SideBar = ({ isSideBarOpen, setIsSideBarOpen, setSelectedComponent }) => {
       toast.success(message);
       dispatch(resetAuthSlice());
     }
-  }, [dispatch, isAuthenticated, error, loading, message]);
+  }, [dispatch, error, message]);
+
+  // Helper function to style active links
+  const getNavItemClass = (componentName) => {
+    const isActive = selectedComponent === componentName;
+    return `w-full flex items-center space-x-3 px-4 py-3 rounded-lg font-medium transition-all duration-200 ${
+      isActive
+        ? "bg-blue-600 text-white shadow-md"
+        : "text-gray-300 hover:bg-gray-800 hover:text-white"
+    }`;
+  };
 
   return (
     <>
-      <aside
-        className={`${
-          isSideBarOpen ? "left-0" : "-left-full"
-        } z-10 transition-all duration-700 md:relative md:left-0 flex w-64 bg-black text-white flex-col h-full`}
-        style={{ position: "fixed" }}
-      >
-        <div className="px-6 py-4 my-8">
-          <img src={logo_with_title} alt="logo" />
+      <aside className="flex flex-col h-full bg-gray-900 text-white shadow-2xl relative w-full">
+        
+        {/* Mobile Close Button */}
+        <button 
+          className="absolute top-4 right-4 p-2 rounded-md lg:hidden hover:bg-gray-800 transition-colors focus:outline-none"
+          onClick={() => setIsSideBarOpen(false)}
+        >
+          <IoMdClose className="w-6 h-6 text-gray-400 hover:text-white transition-colors" />
+        </button>
+
+        {/* Logo Section */}
+        <div className="flex items-center justify-center h-24 border-b border-gray-800 px-6">
+          {/* If your logo image is also broken, it will show the alt text styled nicely */}
+          <img 
+            src={logo_with_title} 
+            alt="Library Logo" 
+            className="max-h-12 object-contain text-sm text-gray-500 italic" 
+          />
         </div>
-        <nav className="flex-1 px-6 space-y-2">
+
+        {/* Navigation Links */}
+        <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto custom-scrollbar">
+          
           <button
-            onClick={() => setSelectedComponent("Dashboard")}
-            className="w-full py-2 font-medium bg-transparent rounded-md hover:cursor-pointer flex items-center space-x-2"
+            onClick={() => {
+              setSelectedComponent("Dashboard");
+              setIsSideBarOpen(false);
+            }}
+            className={getNavItemClass("Dashboard")}
           >
-            <img src={dashboardIcon} alt="dashboard" /> <span>Dashboard</span>
+            <MdSpaceDashboard className="w-5 h-5" /> 
+            <span>Dashboard</span>
           </button>
+
           <button
-            onClick={() => setSelectedComponent("Books")}
-            className="w-full py-2 font-medium bg-transparent rounded-md hover:cursor-pointer flex items-center space-x-2"
+            onClick={() => {
+              setSelectedComponent("BookManagement");
+              setIsSideBarOpen(false);
+            }}
+            className={getNavItemClass("BookManagement")}
           >
-            <img src={bookIcon} alt="books" /> <span>Books</span>
+            <FaBook className="w-5 h-5" /> 
+            <span>Books</span>
           </button>
+
+          {/* Admin Specific Links */}
           {isAuthenticated && user?.role === "Admin" && (
             <>
               <button
-                onClick={() => setSelectedComponent("Catalog")}
-                className="w-full py-2 font-medium bg-transparent rounded-md hover:cursor-pointer flex items-center space-x-2"
+                onClick={() => {
+                  setSelectedComponent("Catalog");
+                  setIsSideBarOpen(false);
+                }}
+                className={getNavItemClass("Catalog")}
               >
-                <img src={catalogIcon} alt="catalog" /> <span>Catalog</span>
+                <MdMenuBook className="w-5 h-5" /> 
+                <span>Catalog</span>
               </button>
+
               <button
-                onClick={() => setSelectedComponent("Users")}
-                className="w-full py-2 font-medium bg-transparent rounded-md hover:cursor-pointer flex items-center space-x-2"
+                onClick={() => {
+                  setSelectedComponent("Users");
+                  setIsSideBarOpen(false);
+                }}
+                className={getNavItemClass("Users")}
               >
-                <img src={usersIcon} alt="users" /> <span>Users</span>
+                <FaUsers className="w-5 h-5" /> 
+                <span>Users</span>
               </button>
-              <button
-                onClick={() => dispatch(toggleAddNewAdminPopup())}
-                className="w-full py-2 font-medium bg-transparent rounded-md hover:cursor-pointer flex items-center space-x-2"
-              >
-                <RiAdminFill className="w-6 h-6" /> <span>Add New Admin</span>
-              </button>
+
+              <div className="pt-4 mt-4 border-t border-gray-800">
+                <button
+                  // onClick={() => dispatch(toggleAddNewAdminPopup())}
+                  className="w-full flex items-center space-x-3 px-4 py-3 rounded-lg font-medium text-emerald-400 hover:bg-gray-800 hover:text-emerald-300 transition-all duration-200"
+                >
+                  <RiAdminFill className="w-5 h-5" /> 
+                  <span>Add New Admin</span>
+                </button>
+              </div>
             </>
           )}
+
+          {/* User Specific Links */}
           {isAuthenticated && user?.role === "User" && (
             <button
-              onClick={() => setSelectedComponent("My Borrowed Books")}
-              className="w-full py-2 font-medium bg-transparent rounded-md hover:cursor-pointer flex items-center space-x-2"
+              onClick={() => {
+                setSelectedComponent("MyBorrowedBooks");
+                setIsSideBarOpen(false);
+              }}
+              className={getNavItemClass("MyBorrowedBooks")}
             >
-              <img src={catalogIcon} alt="my-borrowed-books" />{" "}
+              <MdMenuBook className="w-5 h-5" />
               <span>My Borrowed Books</span>
             </button>
           )}
+
+          {/* Mobile Update Credentials (Hidden on Desktop) */}
           <button
-            onClick={() => dispatch(toggleSettingPopup())}
-            className="md:hidden w-full py-2 font-medium bg-transparent rounded-md hover:cursor-pointer flex items-center space-x-2"
+            // onClick={() => dispatch(toggleSettingPopup())}
+            className="lg:hidden w-full flex items-center space-x-3 px-4 py-3 mt-2 rounded-lg font-medium text-gray-300 hover:bg-gray-800 hover:text-white transition-all duration-200"
           >
-            <img src={settingIcon} alt="setting" />{" "}
+            <IoMdSettings className="w-5 h-5" />
             <span>Update Credentials</span>
           </button>
         </nav>
-        <div className="px-6 py-4">
+
+        {/* Logout Section at Bottom */}
+        <div className="p-4 border-t border-gray-800">
           <button
-            className="py-2 font-medium text-center bg-transparent rounded-md hover:cursor-pointer flex items-center justify-center space-x-5 mb-7 mx-auto w-fit"
+            className="w-full flex items-center justify-center space-x-3 px-4 py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors duration-200 disabled:opacity-50"
             onClick={handleLogout}
+            disabled={loading}
           >
-            <img src={logoutIcon} alt="logout" /> <span>Log Out</span>
+            <MdLogout className="w-5 h-5" /> 
+            <span>{loading ? "Logging out..." : "Log Out"}</span>
           </button>
         </div>
-        <img
-          src={closeIcon}
-          alt="closeIcon"
-          onClick={() => setIsSideBarOpen(!isSideBarOpen)}
-          className="h-fit w-fit absolute top-0 right-4 mt-4 block md:hidden"
-        />
       </aside>
-      {addNewAdminPopup && <AddNewAdmin />}
     </>
   );
 };

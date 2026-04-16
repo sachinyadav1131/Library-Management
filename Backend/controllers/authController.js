@@ -105,7 +105,7 @@ export const login = catchAsyncErrors(async(req, res, next) => {
     if(! email || ! password){
         return next(new ErrorHandeler("Pleaseenter all fields." , 400))
     }
-    const user = await User.findOne({ email , accountVerified: true }).select("password");
+const user = await User.findOne({ email , accountVerified: true }).select("+password");
 
     if(!user){
         return next(new ErrorHandeler("Invalid credentials." , 400));
@@ -153,8 +153,7 @@ export const forgotPassword = catchAsyncErrors(async(req, res , next) => {
 
     await user.save({ validateModifiedOnly: true});
 
-    const resetPasswordUrl = `${process.env.FRONTEND_URL}
-    /password/reset/${resetToken}`;
+   const resetPasswordUrl = `${process.env.FRONTEND_URL}/password/reset/${resetToken}`;
 
     const message = generateForgotPasswordEmailTemplate(resetPasswordUrl);
 
@@ -183,9 +182,9 @@ export const resetPassword = catchAsyncErrors(async(req , res , next) => {
     .update(token)
     .digest("hex");
 
-    const user = await User.findOne({
+   const user = await User.findOne({
         resetPasswordToken,
-        resetPasswordExpire: { $gt: Date.now()},
+        resetPasswordTokenExpire: { $gt: Date.now()},
     });
     if(!user){
         return next(new ErrorHandeler("Reset password token is invalid or expired.", 400));
