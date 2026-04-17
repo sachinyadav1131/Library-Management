@@ -89,7 +89,7 @@ const Home = () => {
       <div className="flex-1 flex flex-col overflow-hidden">
         
         {/* Top Navigation Bar */}
-        <Header />
+       <Header setIsSideBarOpen={setIsSideBarOpen} />
 
         {/* Mobile-only sub-header for Sidebar Toggle */}
         <div className="lg:hidden flex items-center p-4 bg-white border-b border-gray-200">
