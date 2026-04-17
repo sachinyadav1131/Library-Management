@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { toast } from "react-toastify";
 
@@ -11,23 +11,26 @@ import {
   Users, 
   Settings, 
   LogOut, 
-  X 
+  X,
+  BookMarked
 } from "lucide-react";
 
 // Redux Actions
 import { logout, resetAuthSlice } from "../store/slices/authSlice";
+import { toggleAddNewAdminPopup, toggleSettingPopup } from "../store/slices/popUpSlice";
 
-// Components (UNCOMMENTED so the popup actually works!)
+// Components
 import AddNewAdmin from "../popups/AddNewAdmin"; 
+import SettingPopup from "../popups/SettingPopup";
 
-// Assets (Kept only the main branding logo)
+// Assets
 import logo_with_title from "../assets/logo-with-title.png";
 
 const SideBar = ({ isSideBarOpen, setIsSideBarOpen, selectedComponent, setSelectedComponent }) => {
   const dispatch = useDispatch();
   
-  // State to control the popup
-  const [isAdminPopupOpen, setIsAdminPopupOpen] = useState(false);
+  // Pull popup states directly from Redux
+  const { isAddNewAdminPopupOpen, isSettingPopupOpen } = useSelector((state) => state.popup);
 
   const { loading, error, message, isAuthenticated, user } = useSelector(
     (state) => state.auth
@@ -78,6 +81,10 @@ const SideBar = ({ isSideBarOpen, setIsSideBarOpen, selectedComponent, setSelect
         {/* Navigation Links */}
         <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto custom-scrollbar">
           
+          {/* ========================================== */}
+          {/* SHARED LINKS (Visible to both Admin & User) */}
+          {/* ========================================== */}
+          
           <button
             onClick={() => {
               setSelectedComponent("Dashboard");
@@ -89,29 +96,32 @@ const SideBar = ({ isSideBarOpen, setIsSideBarOpen, selectedComponent, setSelect
             <span>Dashboard</span>
           </button>
 
+          {/* Catalog is available to everyone */}
           <button
             onClick={() => {
-              setSelectedComponent("BookManagement");
+              setSelectedComponent("Catalog");
               setIsSideBarOpen(false);
             }}
-            className={getNavItemClass("BookManagement")}
+            className={getNavItemClass("Catalog")}
           >
-            <Book className="w-5 h-5" /> 
-            <span>Books</span>
+            <Library className="w-5 h-5" /> 
+            <span>Catalog</span>
           </button>
 
-          {/* Admin Specific Links */}
+          {/* ========================================== */}
+          {/* ADMIN ONLY LINKS                             */}
+          {/* ========================================== */}
           {isAuthenticated && user?.role === "Admin" && (
             <>
               <button
                 onClick={() => {
-                  setSelectedComponent("Catalog");
+                  setSelectedComponent("BookManagement");
                   setIsSideBarOpen(false);
                 }}
-                className={getNavItemClass("Catalog")}
+                className={getNavItemClass("BookManagement")}
               >
-                <Library className="w-5 h-5" /> 
-                <span>Catalog</span>
+                <Book className="w-5 h-5" /> 
+                <span>Manage Books</span>
               </button>
 
               <button
@@ -127,7 +137,7 @@ const SideBar = ({ isSideBarOpen, setIsSideBarOpen, selectedComponent, setSelect
 
               <div className="pt-4 mt-4 border-t border-gray-800">
                 <button
-                   onClick={() => setIsAdminPopupOpen(true)}
+                   onClick={() => dispatch(toggleAddNewAdminPopup(true))}
                   className="w-full flex items-center space-x-3 px-4 py-3 rounded-lg font-medium text-emerald-400 hover:bg-gray-800 hover:text-emerald-300 transition-all duration-200"
                 >
                   <RiAdminFill className="w-5 h-5" /> 
@@ -137,7 +147,9 @@ const SideBar = ({ isSideBarOpen, setIsSideBarOpen, selectedComponent, setSelect
             </>
           )}
 
-          {/* User Specific Links */}
+          {/* ========================================== */}
+          {/* USER ONLY LINKS                              */}
+          {/* ========================================== */}
           {isAuthenticated && user?.role === "User" && (
             <button
               onClick={() => {
@@ -146,15 +158,17 @@ const SideBar = ({ isSideBarOpen, setIsSideBarOpen, selectedComponent, setSelect
               }}
               className={getNavItemClass("MyBorrowedBooks")}
             >
-              <Library className="w-5 h-5" />
+              <BookMarked className="w-5 h-5" />
               <span>My Borrowed Books</span>
             </button>
           )}
 
-          {/* Mobile Update Credentials (Hidden on Desktop) */}
+          {/* ========================================== */}
+          {/* SHARED SETTINGS (Visible to everyone)        */}
+          {/* ========================================== */}
           <button
-            // onClick={() => dispatch(toggleSettingPopup())}
-            className="lg:hidden w-full flex items-center space-x-3 px-4 py-3 mt-2 rounded-lg font-medium text-gray-300 hover:bg-gray-800 hover:text-white transition-all duration-200"
+            onClick={() => dispatch(toggleSettingPopup(true))}
+            className="w-full flex items-center space-x-3 px-4 py-3 mt-2 rounded-lg font-medium text-gray-300 hover:bg-gray-800 hover:text-white transition-all duration-200"
           >
             <Settings className="w-5 h-5" />
             <span>Update Credentials</span>
@@ -174,8 +188,15 @@ const SideBar = ({ isSideBarOpen, setIsSideBarOpen, selectedComponent, setSelect
         </div>
       </aside>
 
-      {/* Add New Admin Popup */}
-      <AddNewAdmin isOpen={isAdminPopupOpen} onClose={() => setIsAdminPopupOpen(false)} />
+      {/* Popups controlled by Redux */}
+      <AddNewAdmin 
+        isOpen={isAddNewAdminPopupOpen} 
+        onClose={() => dispatch(toggleAddNewAdminPopup(false))} 
+      />
+      <SettingPopup 
+        isOpen={isSettingPopupOpen} 
+        onClose={() => dispatch(toggleSettingPopup(false))} 
+      />
     </>
   );
 };
