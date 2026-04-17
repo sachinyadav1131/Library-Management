@@ -142,9 +142,18 @@ const AdminDashboard = () => {
         </div>
 
         {/* Overdue Alerts Panel */}
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-          <h3 className="text-lg font-bold text-gray-800 mb-4 border-b pb-2">Overdue Alerts</h3>
-          <div className="space-y-4">
+        {/* Overdue Alerts Panel (Read-Only automated list) */}
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex flex-col max-h-[500px]">
+          <h3 className="text-lg font-bold text-gray-800 mb-4 border-b pb-2 flex justify-between items-center">
+            Overdue Alerts
+            {overdueBorrows.length > 0 && (
+              <span className="bg-red-100 text-red-600 text-xs px-2 py-1 rounded-full font-bold">
+                {overdueBorrows.length} Active Alerts
+              </span>
+            )}
+          </h3>
+          
+          <div className="space-y-4 overflow-y-auto custom-scrollbar pr-2 flex-1">
             
             {overdueBorrows.length === 0 ? (
               <div className="bg-green-50 text-green-700 p-4 rounded-lg flex items-center gap-3 border border-green-100">
@@ -155,22 +164,50 @@ const AdminDashboard = () => {
                 </div>
               </div>
             ) : (
-              <div className="bg-red-50 text-red-700 p-4 rounded-lg flex items-start border border-red-100 animate-pulse">
-                <FaExclamationTriangle className="mt-1 mr-3 flex-shrink-0 text-red-500" size={20} />
-                <div>
-                  <p className="font-bold text-sm">{overdueBorrows.length} Books are significantly overdue!</p>
-                  <p className="text-xs mt-1 text-red-600">
-                    Check the borrowing history to find out which users haven't returned their books.
-                  </p>
-                </div>
-              </div>
+              <>
+                <p className="text-xs text-gray-500 italic mb-2">
+                  *Automated email reminders are currently active for these users via backend services.
+                </p>
+                {overdueBorrows.map((overdue) => {
+                  const matchedBook = books.find((b) => b._id === overdue.book);
+                  const bookTitle = matchedBook ? matchedBook.title : "Unknown Book";
+                  
+                  return (
+                    <div key={overdue._id} className="bg-red-50 text-red-800 p-4 rounded-lg flex flex-col gap-3 border border-red-100">
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-start gap-3">
+                          <FaExclamationTriangle className="mt-1 flex-shrink-0 text-red-500" size={16} />
+                          <div>
+                            <p className="font-bold text-sm line-clamp-1">{bookTitle}</p>
+                            <p className="text-xs mt-0.5 text-red-600 font-medium">
+                              User: {overdue.user?.name} ({overdue.user?.email})
+                            </p>
+                            <p className="text-xs mt-0.5 text-red-600 font-medium">
+                              Due Date: {new Date(overdue.dueDate).toLocaleDateString()}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {/* The Action Button */}
+                      <div className="flex justify-end border-t border-red-200 pt-2 mt-1">
+                        <button 
+                          onClick={() => openReturnPopup(overdue)}
+                          className="text-xs px-3 py-1.5 bg-white text-gray-700 hover:bg-gray-100 border border-gray-200 rounded font-medium transition-colors"
+                        >
+                          Process Return
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </>
             )}
 
           </div>
         </div>
       </div>
 
-      {/* 👈 THE POPUP RENDERER */}
       <ReturnBookPopup 
         isOpen={isReturnPopupOpen} 
         onClose={() => setIsReturnPopupOpen(false)} 
