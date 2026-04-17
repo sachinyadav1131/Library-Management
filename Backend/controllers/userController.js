@@ -70,6 +70,44 @@ export const registerNewAdmin = catchAsyncErrors(async(req , res , next) =>{
     });
 });
 
+export const settleUserDues = catchAsyncErrors(async (req, res, next) => {
+    const { amountPaid, fineAdded } = req.body;
+    const user = await User.findById(req.params.id);
+    
+    if (!user) return next(new ErrorHandeler("User not found.", 404));
+
+    let currentDue = user.totalFinesDue || 0;
+    
+    // Add new fine (if book was returned late)
+    currentDue += Number(fineAdded || 0); 
+    // Subtract what they paid at the desk
+    currentDue -= Number(amountPaid || 0); 
+
+    // Prevent negative balances
+    if (currentDue < 0) currentDue = 0; 
+    
+    user.totalFinesDue = currentDue;
+    await user.save();
+
+    res.status(200).json({
+        success: true,
+        message: "Payment & Dues updated successfully.",
+    });
+});
+
+export const updateProfile = catchAsyncErrors(async (req, res, next) => {
+    const newData = { name: req.body.name };
+
+    if (req.files && req.files.avatar) {
+        const file = req.files.avatar;
+        // Logic to upload new avatar to Cloudinary...
+        // const results = await cloudinary.v2.uploader.upload(file.tempFilePath);
+        // newData.avatar = { public_id: results.public_id, url: results.secure_url };
+    }
+
+    const user = await User.findByIdAndUpdate(req.user.id, newData, { new: true });
+    res.status(200).json({ success: true, user, message: "Profile updated!" });
+});
 
 
 

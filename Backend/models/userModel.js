@@ -46,6 +46,10 @@ const userSchema = new mongoose.Schema({
         public_id: String,
         url: String
     },
+    totalFinesDue: {
+        type: Number,
+        default: 0,
+    },
    verificationCode: Number,
     verificationCodeExpire: Date,
     resetPasswordToken: String,

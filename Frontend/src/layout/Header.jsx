@@ -1,92 +1,119 @@
-import React from "react";
-import { useSelector } from "react-redux";
-import { FaUserCircle, FaSearch, FaBell, FaBars } from "react-icons/fa";
+import React, { useState, useMemo, useEffect, useRef } from "react";
+import { useSelector, useDispatch } from "react-redux";
+import { 
+  FaUserCircle, FaSearch, FaBell, FaBars, FaWallet, 
+  FaUserEdit, FaSignOutAlt, FaChevronDown 
+} from "react-icons/fa";
+import { setSearchQuery } from "../store/slices/bookSlice";
+import ProfileModal from "../popups/ProfileModal";
 
-// Accept setIsSideBarOpen as a prop so we can toggle the sidebar from the header!
 const Header = ({ setIsSideBarOpen }) => {
+  const dispatch = useDispatch();
+  const dropdownRef = useRef(null);
+  
   const { user } = useSelector((state) => state.auth);
+  const { searchQuery } = useSelector((state) => state.books);
+
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  // 💰 SIMPLEST LOGIC: Just show what the backend says
+  const totalDue = useMemo(() => {
+    return Number(user?.totalFinesDue || 0);
+  }, [user]);
 
   return (
-    <header className="bg-white border-b border-gray-200 h-16 flex items-center justify-between px-4 lg:px-8 sticky top-0 z-40 shadow-sm w-full">
+    <header className="bg-white border-b border-gray-200 h-16 flex items-center justify-between px-4 lg:px-8 sticky top-0 z-40 shadow-sm w-full font-sans">
       
-      {/* ========================================== */}
-      {/* LEFT SIDE: Hamburger & Search/Title          */}
-      {/* ========================================== */}
+      {/* Left: Search */}
       <div className="flex items-center gap-4 flex-1">
-        
-        {/* Mobile Hamburger Button (Visible only on small screens) */}
-        <button
-          onClick={() => setIsSideBarOpen && setIsSideBarOpen(true)}
-          className="lg:hidden p-2 -ml-2 text-gray-600 hover:bg-gray-100 hover:text-blue-600 rounded-md focus:outline-none transition-colors"
-        >
+        <button onClick={() => setIsSideBarOpen && setIsSideBarOpen(true)} className="lg:hidden p-2 text-gray-600 hover:bg-gray-100 rounded-md transition-colors">
           <FaBars className="w-5 h-5" />
         </button>
 
-        {/* Mobile Title (Visible only when search is hidden) */}
-        <div className="sm:hidden font-bold text-lg text-blue-900 truncate">
-          Library MS
-        </div>
-
-        {/* Desktop Search Bar (Hidden on mobile) */}
-        <div className="hidden sm:flex items-center w-full max-w-md">
-          <div className="relative w-full">
-            {/* Added pointer-events-none so the icon doesn't block clicks! */}
-            <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-              <FaSearch className="text-gray-400 w-4 h-4" />
-            </span>
-            <input
-              type="text"
-              className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg leading-5 bg-gray-50 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-all"
-              placeholder="Search for books, authors, or ISBN..."
-            />
-          </div>
+        <div className="hidden sm:flex items-center w-full max-w-md relative">
+          <FaSearch className="absolute left-3 text-gray-400 w-4 h-4" />
+          <input
+            type="text"
+            value={searchQuery || ""}
+            onChange={(e) => dispatch(setSearchQuery(e.target.value))}
+            className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg bg-gray-50 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+            placeholder="Search catalog..."
+          />
         </div>
       </div>
 
-      {/* ========================================== */}
-      {/* RIGHT SIDE: Actions & User Profile           */}
-      {/* ========================================== */}
-      {/* Added flex-shrink-0 so the search bar doesn't squish the buttons */}
+      {/* Right Section */}
       <div className="flex items-center space-x-3 sm:space-x-6 flex-shrink-0">
         
-        {/* Notifications Icon */}
-        <button className="text-gray-500 hover:text-blue-600 transition-colors relative p-2 rounded-full hover:bg-gray-50">
+        {/* Wallet Badge */}
+        {user?.role !== "Admin" && (
+          <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border transition-all duration-300 ${
+            totalDue > 0 ? 'bg-red-50 border-red-200 text-red-700 font-bold' : 'bg-green-50 border-green-200 text-green-700 font-bold'
+          }`}>
+            <FaWallet className={totalDue > 0 ? 'animate-pulse' : ''} />
+            <span className="text-sm">₹{totalDue}</span>
+          </div>
+        )}
+
+        <button className="text-gray-500 hover:text-blue-600 relative p-2 rounded-full hover:bg-gray-100">
           <FaBell className="w-5 h-5" />
-          {/* Added pointer-events-none to the dot */}
-          <span className="absolute top-1 right-1 block h-2.5 w-2.5 rounded-full bg-red-500 border-2 border-white pointer-events-none"></span>
+          <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-red-500 border-2 border-white"></span>
         </button>
 
-        {/* Vertical Divider */}
         <div className="hidden sm:block h-8 w-px bg-gray-200"></div>
 
-        {/* User Info (Clickable Block) */}
-        <div className="flex items-center gap-3 cursor-pointer p-1 pr-2 rounded-lg hover:bg-gray-50 transition-colors">
-          <div className="text-right hidden md:block">
-            <p className="text-sm font-bold text-gray-800 leading-none">
-              {user?.name || "Guest User"}
-            </p>
-            <p className="text-xs text-gray-500 mt-1 uppercase tracking-wider font-semibold">
-              {user?.role || "Member"}
-            </p>
-          </div>
-          
-          <div className="relative">
-            {user?.avatar?.url ? (
-              <img
-                src={user.avatar.url}
-                alt="profile"
-                className="h-9 w-9 sm:h-10 sm:w-10 rounded-full border-2 border-blue-500 p-0.5 object-cover"
-              />
-            ) : (
-              <FaUserCircle className="h-9 w-9 sm:h-10 sm:w-10 text-gray-400 hover:text-blue-500 transition-colors" />
-            )}
+        {/* Profile Dropdown */}
+        <div className="relative" ref={dropdownRef}>
+          <div 
+            onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+            className="flex items-center gap-3 cursor-pointer p-1 rounded-xl hover:bg-gray-50 transition-all select-none group"
+          >
+            <div className="text-right hidden md:block leading-none">
+              <p className="text-sm font-bold text-gray-800">{user?.name || "User"}</p>
+              <p className="text-[10px] text-gray-500 mt-1 uppercase font-black tracking-widest">{user?.role || "Member"}</p>
+            </div>
             
-            {/* Status Dot */}
-            <span className="absolute bottom-0 right-0 block h-2.5 w-2.5 sm:h-3 sm:w-3 rounded-full bg-green-500 border-2 border-white pointer-events-none"></span>
+            <div className="relative flex-shrink-0">
+              {user?.avatar?.url ? (
+                <img src={user.avatar.url} alt="p" className="h-10 w-10 rounded-full border-2 border-blue-500 p-0.5 object-cover" />
+              ) : (
+                <FaUserCircle className="h-10 w-10 text-gray-400" />
+              )}
+              <div className="absolute -bottom-1 -right-1 bg-white rounded-full border border-gray-200 p-0.5">
+                <FaChevronDown className={`text-[8px] text-gray-600 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} />
+              </div>
+            </div>
           </div>
+
+          {isDropdownOpen && (
+            <div className="absolute right-0 mt-3 w-52 bg-white border border-gray-100 rounded-xl shadow-2xl z-[999] py-2 animate-fadeIn">
+              <button 
+                onClick={() => { setIsProfileModalOpen(true); setIsDropdownOpen(false); }}
+                className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 flex items-center gap-3 transition-colors"
+              >
+                <FaUserEdit className="text-blue-500" /> View Profile
+              </button>
+              <div className="border-t border-gray-50 my-1"></div>
+              <button className="w-full text-left px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 flex items-center gap-3 transition-colors">
+                <FaSignOutAlt /> Sign Out
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
+      <ProfileModal isOpen={isProfileModalOpen} onClose={() => setIsProfileModalOpen(false)} user={user} />
     </header>
   );
 };

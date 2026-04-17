@@ -8,6 +8,7 @@ const bookSlice = createSlice({
     books: [],
     error: null,
     message: null,
+    searchQuery: "",
   },
   reducers: {
     // GET ALL BOOKS
@@ -69,6 +70,10 @@ const bookSlice = createSlice({
       state.error = action.payload;
     },
 
+    setSearchQuery(state, action) {
+      state.searchQuery = action.payload;
+    },
+
     // CLEANUP MESSAGES
     clearBookErrors(state) {
       state.error = null;
@@ -98,30 +103,37 @@ export const getAllBooks = () => async (dispatch) => {
     );
   }
 };
-
 export const addBook = (bookData) => async (dispatch) => {
   dispatch(bookSlice.actions.addBookRequest());
   try {
     const { data } = await axios.post(
       "http://localhost:4000/api/v1/book/admin/add",
-      bookData,
+      bookData, // This is now FormData, not JSON!
       {
         withCredentials: true,
         headers: {
-          "Content-Type": "application/json",
+          "Content-Type": "multipart/form-data", // 👈 Crucial change!
         },
-      },
+      }
     );
     dispatch(bookSlice.actions.addBookSuccess(data));
   } catch (error) {
-    dispatch(
-      bookSlice.actions.addBookFailed(
-        error.response?.data?.message || "Failed to add book",
-      ),
-    );
+    dispatch(bookSlice.actions.addBookFailed(error.response?.data?.message || "Failed to add book"));
   }
 };
 
+export const updateBook = (id, bookData) => async (dispatch) => {
+    dispatch(bookSlice.actions.updateBookRequest());
+    try {
+        const { data } = await axios.put(`http://localhost:4000/api/v1/book/update/${id}`, bookData, {
+            withCredentials: true,
+            headers: { "Content-Type": "multipart/form-data" } // 👈 Crucial change!
+        });
+        dispatch(bookSlice.actions.updateBookSuccess(data));
+    } catch (error) {
+        dispatch(bookSlice.actions.updateBookFailed(error.response?.data?.message || "Failed to update book"));
+    }
+};
 export const deleteBook = (id) => async (dispatch) => {
   dispatch(bookSlice.actions.deleteBookRequest());
   try {
@@ -141,19 +153,6 @@ export const deleteBook = (id) => async (dispatch) => {
   }
 };
 
-export const updateBook = (id, bookData) => async (dispatch) => {
-    dispatch(bookSlice.actions.updateBookRequest());
-    try {
-        // Double-check this URL matches your backend bookRouter.js update route!
-        const { data } = await axios.put(`http://localhost:4000/api/v1/book/update/${id}`, bookData, {
-            withCredentials: true,
-            headers: { "Content-Type": "application/json" } // Change to multipart/form-data if uploading images
-        });
-        dispatch(bookSlice.actions.updateBookSuccess(data));
-    } catch (error) {
-        dispatch(bookSlice.actions.updateBookFailed(error.response?.data?.message || "Failed to update book"));
-    }
-};
 
-export const { clearBookErrors, clearBookMessage } = bookSlice.actions;
+export const { clearBookErrors, clearBookMessage, setSearchQuery } = bookSlice.actions;
 export default bookSlice.reducer;

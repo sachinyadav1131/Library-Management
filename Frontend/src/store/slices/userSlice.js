@@ -36,6 +36,21 @@ const userSlice = createSlice({
             state.loading = false;
             state.error = action.payload;
         },
+
+        // 👇 THESE WERE MISSING! Added them back so settleDues works!
+        userActionRequest(state) { 
+            state.loading = true; 
+            state.error = null; 
+            state.message = null; 
+        },
+        userActionSuccess(state, action) { 
+            state.loading = false; 
+            state.message = action.payload; 
+        },
+        userActionFailed(state, action) { 
+            state.loading = false; 
+            state.error = action.payload; 
+        },
         
         clearUserErrors(state) {
             state.error = null;
@@ -65,13 +80,25 @@ export const registerAdmin = (formData) => async (dispatch) => {
         const { data } = await axios.post("http://localhost:4000/api/v1/user/register-admin", formData, {
             withCredentials: true,
             headers: {
-                "Content-Type": "multipart/form-data", // Required for file uploads
+                "Content-Type": "multipart/form-data", 
             }
         });
         dispatch(userSlice.actions.registerAdminSuccess(data));
     } catch (error) {
         dispatch(userSlice.actions.registerAdminFailed(error.response?.data?.message || "Failed to register admin"));
     }
+};
+
+// This thunk will now successfully trigger the reducers above!
+export const settleDues = (id, paymentData) => async (dispatch) => {
+  dispatch(userSlice.actions.userActionRequest());
+  try {
+    const { data } = await axios.put(`http://localhost:4000/api/v1/user/settle-dues/${id}`, paymentData, { withCredentials: true });
+    // Note: We use data.message here because your backend sends { message: "Payment & Dues updated successfully." }
+    dispatch(userSlice.actions.userActionSuccess(data.message)); 
+  } catch (error) {
+    dispatch(userSlice.actions.userActionFailed(error.response?.data?.message || "Failed to update dues"));
+  }
 };
 
 export const { clearUserErrors, clearUserMessage } = userSlice.actions;

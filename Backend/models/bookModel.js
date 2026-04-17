@@ -28,6 +28,18 @@ const bookSchema = new mongoose.Schema({
         type: Boolean,
         default: true,
     },
+    frontCover: {
+        public_id: {
+            type: String,
+        },
+        url: {
+            type: String,
+        }
+    },
+    bookPdf: {
+        public_id: { type: String },
+        url: { type: String }
+    },
 
 }
 , {

@@ -1,23 +1,36 @@
-import React from "react";
-import { useSelector } from "react-redux";
-import { BookMarked, Clock, CheckCircle, AlertCircle, Calendar } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import { BookMarked, Clock, CheckCircle, AlertCircle, Calendar, BookOpen } from "lucide-react";
+
+// Import your existing ReadBookPopup and the getAllBooks action
+import ReadBookPopup from "../popups/ReadBookPopup"; 
+import { getAllBooks } from "../store/slices/bookSlice";
 
 const MyBorrowedBooks = () => {
-  // Grab the user directly from the auth store
+  const dispatch = useDispatch();
+
+  // Grab BOTH user and books from the Redux store
   const { user } = useSelector((state) => state.auth);
+  const { books } = useSelector((state) => state.books);
   
-  // Default to empty array if undefined
+  // State to track which book the user wants to read
+  const [bookToRead, setBookToRead] = useState(null);
+  
+  // Fetch books on mount so we have the full data (including PDFs) loaded
+  useEffect(() => {
+    dispatch(getAllBooks());
+  }, [dispatch]);
+
   const borrowedBooks = user?.borrowedBooks || [];
 
   // Sort books so that currently borrowed/overdue books are at the top
   const sortedBooks = [...borrowedBooks].sort((a, b) => {
     if (a.returned === b.returned) {
-      return new Date(b.dueDate) - new Date(a.dueDate); // Newest first
+      return new Date(b.dueDate) - new Date(a.dueDate); 
     }
-    return a.returned ? 1 : -1; // Unreturned books bubble to the top
+    return a.returned ? 1 : -1; 
   });
 
-  // Helper function to generate the correct status badge
   const getStatusBadge = (returned, dueDate) => {
     if (returned) {
       return (
@@ -98,15 +111,44 @@ const MyBorrowedBooks = () => {
                 </div>
               </div>
 
-              {/* Right Side: Status Badge */}
-              <div className="flex flex-col items-end justify-center">
+              {/* Right Side: Status Badge & Actions */}
+              <div className="flex flex-col items-end justify-center gap-3">
                 {getStatusBadge(record.returned, record.dueDate)}
                 
                 {/* Notice for overdue books */}
                 {!record.returned && new Date() > new Date(record.dueDate) && (
-                  <span className="text-xs text-red-500 mt-2 font-medium">
+                  <span className="text-xs text-red-500 font-medium">
                     Please return this book to avoid fines.
                   </span>
+                )}
+
+                {/* Read Now Button (Only visible if the book is actively borrowed) */}
+                {/* Read Now Button */}
+                {!record.returned && (
+                  <button 
+                    onClick={() => {
+                      // 🚀 THE BULLETPROOF SEARCH
+                      // Try to find the book by ID first, but if that fails, match it by the Title!
+                      const fullBookData = books?.find((b) => 
+                        String(b._id) === String(record.book) || 
+                        String(b._id) === String(record.bookId) ||
+                        b.title?.toLowerCase() === record.bookTitle?.toLowerCase()
+                      );
+                      
+                      if (fullBookData && fullBookData.bookPdf) {
+                        setBookToRead(fullBookData); 
+                      } else if (fullBookData) {
+                        // We found the book, but the Admin genuinely hasn't uploaded a PDF yet
+                        setBookToRead(fullBookData);
+                      } else {
+                        // If it STILL can't find it, the books haven't finished loading from the backend yet
+                        alert("Still loading book data... Please wait a second and try again!");
+                      }
+                    }}
+                    className="px-4 py-2 bg-blue-600 text-white text-sm font-bold rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 shadow-sm"
+                  >
+                    <BookOpen size={16} /> Read Now
+                  </button>
                 )}
               </div>
 
@@ -114,6 +156,13 @@ const MyBorrowedBooks = () => {
           ))
         )}
       </div>
+
+      {/* Safely render the ReadBookPopup at the bottom of the component */}
+      <ReadBookPopup 
+        isOpen={!!bookToRead} // Converts the object to true/false
+        onClose={() => setBookToRead(null)} 
+        book={bookToRead} 
+      />
 
     </div>
   );
