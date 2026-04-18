@@ -4,11 +4,19 @@ import { Book } from "../models/bookModel.js";
 import { User } from "../models/userModel.js";
 import { Borrow } from "../models/borrowModel.js";
 import ErrorHandeler from "../middlewares/errorMiddlewares.js";
+import { sendEmail } from "../utils/sendEmail.js";
 
-// @desc    User: Send a borrow request
-export const createBorrowRequest = catchAsyncErrors(async (req, res, next) => {
+// @desc    User: Send a rent or purchase request
+export const createBookRequest = catchAsyncErrors(async (req, res, next) => {
     const { bookId } = req.params;
-    const user = req.user; // Assumes your auth middleware provides req.user
+    const { requestType } = req.body; // Expects "Borrow" or "Purchase" from Frontend
+    
+    // Fetch the fresh user from DB to ensure arrays are perfectly up-to-date
+    const user = await User.findById(req.user._id);
+
+    if (!["Borrow", "Purchase"].includes(requestType)) {
+        return next(new ErrorHandeler("Invalid request type. Must be Borrow or Purchase.", 400));
+    }
 
     const book = await Book.findById(bookId);
     if (!book) return next(new ErrorHandeler("Book not found.", 404));
@@ -17,29 +25,47 @@ export const createBorrowRequest = catchAsyncErrors(async (req, res, next) => {
         return next(new ErrorHandeler("Book is currently out of stock.", 400));
     }
 
-    // Prevent duplicate pending requests for the same book
-    const existingRequest = await Request.findOne({
+    // 🛑 1. PENDING REQUEST CHECK (Applies to BOTH Rent and Purchase)
+    // Prevents spamming the admin with multiple identical pending requests
+    const pendingRequest = await Request.findOne({
         "user.id": user._id,
         "book.id": bookId,
+        requestType: requestType,
         status: "Pending"
     });
 
-    if (existingRequest) {
-        return next(new ErrorHandeler("You already have a pending request for this book.", 400));
+    if (pendingRequest) {
+        return next(new ErrorHandeler(`You already have a pending ${requestType} request for this book.`, 400));
     }
+
+    // 🛑 2. STRICT RENTAL CHECK (Applies ONLY to Rent)
+    // Prevent user from renting a book they currently have at home
+    if (requestType === "Borrow") {
+        const alreadyRented = user.borrowedBooks.some(
+            (b) => String(b.bookId) === String(bookId) && b.returned === false
+        );
+        if (alreadyRented) {
+            return next(new ErrorHandeler("You are currently renting this physical book. Please return it before renting again.", 400));
+        }
+    }
+    // Notice: There is no check here for "Purchase". They can buy as many copies as they want!
+
+    // Determine the agreed price based on the request type
+    const priceAgreed = requestType === "Borrow" ? book.rentPrice : book.purchasePrice;
 
     await Request.create({
         user: { id: user._id, name: user.name, email: user.email },
-        book: { id: book._id, title: book.title, price: book.price },
+        book: { id: book._id, title: book.title, price: priceAgreed },
+        requestType,
     });
 
     res.status(201).json({
         success: true,
-        message: "Borrow request submitted successfully! Waiting for Admin approval."
+        message: `${requestType === 'Borrow' ? 'Rent' : 'Purchase'} request submitted successfully! Waiting for Admin approval.`
     });
 });
 
-// @desc    Admin: Get all pending/all requests
+// @desc    Admin: Get all requests
 export const getAllBorrowRequests = catchAsyncErrors(async (req, res, next) => {
     const requests = await Request.find().sort({ createdAt: -1 });
     res.status(200).json({
@@ -49,20 +75,23 @@ export const getAllBorrowRequests = catchAsyncErrors(async (req, res, next) => {
 });
 
 // @desc    Admin: Approve or Reject Request
+// @desc    Admin: Approve or Reject Request
 export const manageBorrowRequest = catchAsyncErrors(async (req, res, next) => {
     const { requestId } = req.params;
-    const { action } = req.body; // Expects "Approved" or "Rejected"
+    const { action } = req.body; // "Approved" or "Rejected"
 
-    const borrowRequest = await Request.findById(requestId);
-    if (!borrowRequest) return next(new ErrorHandeler("Request not found.", 404));
+    const bookRequest = await Request.findById(requestId);
+    if (!bookRequest) return next(new ErrorHandeler("Request not found.", 404));
 
-    if (borrowRequest.status !== "Pending") {
+    if (bookRequest.status !== "Pending") {
         return next(new ErrorHandeler("This request has already been processed.", 400));
     }
 
     if (action === "Approved") {
-        const book = await Book.findById(borrowRequest.book.id);
-        const user = await User.findById(borrowRequest.user.id);
+        const book = await Book.findById(bookRequest.book.id);
+        
+        // 🛠️ FIX 1: Add .select("+password") so user.save() doesn't fail validation
+        const user = await User.findById(bookRequest.user.id).select("+password");
 
         if (!book || book.quantity < 1) {
             return next(new ErrorHandeler("Book no longer available.", 400));
@@ -71,43 +100,98 @@ export const manageBorrowRequest = catchAsyncErrors(async (req, res, next) => {
         // 1. Update Inventory
         book.quantity -= 1;
         book.availability = book.quantity > 0;
-        await book.save();
+        
+        // 🛠️ FIX 2: validateModifiedOnly ignores missing fields on old test books
+        await book.save({ validateModifiedOnly: true });
 
-        // 2. Add Price to User Dues (Backend-Driven Math)
-        user.totalFinesDue = (user.totalFinesDue || 0) + Number(book.price);
+        // 2. Add Price to User Dues
+        user.totalFinesDue = (user.totalFinesDue || 0) + Number(bookRequest.book.price);
 
-        const borrowedDate = new Date();
-        const dueDate = new Date(borrowedDate.getTime() + 7 * 24 * 60 * 60 * 1000);
+        // 3. Process differently based on Request Type
+        if (bookRequest.requestType === "Borrow") {
+            const borrowedDate = new Date();
+            const dueDate = new Date(borrowedDate.getTime() + 7 * 24 * 60 * 60 * 1000); // 7 days
 
-        // 3. Add to User's Borrowed Array
-        user.borrowedBooks.push({
-            bookId: book._id,
-            bookTitle: book.title,
-            borrowedDate,
-            dueDate,
-            returned: false,
-        });
-        await user.save();
+            user.borrowedBooks.push({
+                bookId: book._id,
+                bookTitle: book.title,
+                borrowedDate,
+                dueDate,
+                returned: false,
+            });
 
-        // 4. Create record in Borrow Model
-        await Borrow.create({
-            user: { id: user._id, name: user.name, email: user.email },
-            book: book._id,
-            dueDate,
-            price: book.price,
-        });
+            // 🛠️ FIX 3: Reverted book back to just ID to perfectly match your Borrow schema
+            await Borrow.create({
+                user: { 
+                    id: user._id, 
+                    name: user.name, 
+                    email: user.email 
+                },
+                book: book._id, 
+                dueDate: dueDate,
+                price: bookRequest.book.price 
+            });
 
-        borrowRequest.status = "Approved";
+        } else if (bookRequest.requestType === "Purchase") {
+            // Push to purchased array (No due dates, lifetime access to PDF)
+            user.purchasedBooks.push({
+                bookId: book._id,
+                bookTitle: book.title,
+                purchaseDate: new Date(),
+            });
+        }
+
+        // Save User, ignoring unselected fields
+        await user.save({ validateModifiedOnly: true });
+        
+        bookRequest.status = "Approved";
+        await bookRequest.save(); // Save the status immediately
+
+        // 📧 4. SEND APPROVAL EMAIL
+        try {
+            const emailSubject = `Library Request Approved: ${book.title}`;
+            let emailMessage = `Hello ${user.name},\n\nCongratulations! Your request to ${bookRequest.requestType.toLowerCase()} "${book.title}" has been approved.\n\n`;
+            
+            if (bookRequest.requestType === "Borrow") {
+                emailMessage += `Please visit the library to collect your physical copy. Note that a charge of ₹${bookRequest.book.price} has been added to your dues.\n\nHappy Reading!`;
+            } else {
+                emailMessage += `You can now access your lifetime digital copy in the 'Purchased E-Books' section of your library dashboard. If you requested a physical copy as well, you may pick it up at the front desk.\n\nA charge of ₹${bookRequest.book.price} has been added to your dues.\n\nHappy Reading!`;
+            }
+
+            await sendEmail({
+                email: user.email,
+                subject: emailSubject,
+                message: emailMessage,
+            });
+        } catch (error) {
+            console.error("Approval email could not be sent:", error);
+            // Non-blocking error handling
+        }
+
     } else if (action === "Rejected") {
-        borrowRequest.status = "Rejected";
+        bookRequest.status = "Rejected";
+        await bookRequest.save(); // Save the status immediately
+
+        // 📧 5. SEND REJECTION EMAIL
+        try {
+            const emailSubject = `Library Request Update: ${bookRequest.book.title}`;
+            const emailMessage = `Hello ${bookRequest.user.name},\n\nWe regret to inform you that your request to ${bookRequest.requestType.toLowerCase()} the book "${bookRequest.book.title}" has been rejected.\n\nThis is usually due to stock unavailability, pending dues, or administrative reasons. Please contact the library staff for further details.\n\nBest regards,\nThe Library Team`;
+
+            await sendEmail({
+                email: bookRequest.user.email,
+                subject: emailSubject,
+                message: emailMessage,
+            });
+        } catch (error) {
+            console.error("Rejection email could not be sent:", error);
+            // Non-blocking error handling
+        }
     } else {
         return next(new ErrorHandeler("Invalid action.", 400));
     }
 
-    await borrowRequest.save();
-
     res.status(200).json({
         success: true,
-        message: `Request has been ${action} successfully.`
+        message: `Request has been ${action} successfully. User notified via email.`
     });
 });

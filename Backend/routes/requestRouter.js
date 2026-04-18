@@ -1,6 +1,6 @@
 import express from "express";
 import { 
-    createBorrowRequest, 
+    createBookRequest,
     getAllBorrowRequests, 
     manageBorrowRequest 
 } from "../controllers/requestController.js";
@@ -9,7 +9,7 @@ import { isAuthenticated } from "../middlewares/authMiddlewares.js"; // removed 
 const router = express.Router();
 
 // User: Send a request for a specific book
-router.post("/send/:bookId", isAuthenticated, createBorrowRequest);
+router.post("/send/:bookId", isAuthenticated, createBookRequest);
 
 // Admin: Get all requests 
 // (Note: If isAdmin is not exported yet, we can check role inside the controller)

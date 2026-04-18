@@ -7,17 +7,20 @@ import cloudinary from "cloudinary";
 // 1. ADD BOOK
 // ==============================
 export const addBook = catchAsyncErrors(async (req, res, next) => {
-  const { title, author, description, price, quantity } = req.body;
+  // 👈 Updated to extract the new pricing and category fields
+  const { title, author, category, description, rentPrice, purchasePrice, quantity } = req.body;
 
-  if (!title || !author || !description || !price || !quantity) {
-    return next(new ErrorHandeler("Please fill all fields.", 400));
+  if (!title || !author || !category || !description || !rentPrice || !purchasePrice || !quantity) {
+    return next(new ErrorHandeler("Please fill all required fields.", 400));
   }
 
   let bookData = {
     title,
     author,
+    category,
     description,
-    price,
+    rentPrice,
+    purchasePrice,
     quantity,
   };
 
@@ -63,7 +66,7 @@ export const addBook = catchAsyncErrors(async (req, res, next) => {
 // 2. GET ALL BOOKS
 // ==============================
 export const getAllBook = catchAsyncErrors(async (req, res, next) => {
-  const books = await Book.find();
+  const books = await Book.find().sort({ createdAt: -1 }); // 👈 Added sort to show newest first
   res.status(200).json({
     success: true,
     books,
@@ -132,7 +135,7 @@ export const updateBook = catchAsyncErrors(async (req, res, next) => {
     };
   }
 
-  // Finally, update the database with the text AND the new file URLs
+  // Update the database with the text AND the new file URLs
   book = await Book.findByIdAndUpdate(id, updateData, {
     new: true, 
     runValidators: true, 

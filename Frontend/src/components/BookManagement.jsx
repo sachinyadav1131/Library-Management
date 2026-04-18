@@ -110,7 +110,7 @@ const BookManagement = () => {
             <thead className="bg-gray-50 text-gray-700 font-bold border-b border-gray-100">
               <tr>
                 <th className="px-6 py-4">Book Info</th>
-                <th className="px-6 py-4">Price</th>
+                <th className="px-6 py-4">Pricing (Rent / Buy)</th>
                 <th className="px-6 py-4">Current Stock</th>
                 <th className="px-6 py-4">Added On</th>
                 <th className="px-6 py-4 text-center">Actions</th>
@@ -134,7 +134,12 @@ const BookManagement = () => {
                       <div className="font-bold text-gray-900 line-clamp-1" title={book.title}>{book.title}</div>
                       <div className="text-xs text-gray-500 mt-0.5">{book.author}</div>
                     </td>
-                    <td className="px-6 py-4 font-medium">₹{book.price}</td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex flex-col gap-1 text-sm">
+                        <span className="text-blue-600 font-semibold">Rent: ₹{book.rentPrice || 0}</span>
+                        <span className="text-green-600 font-semibold">Buy: ₹{book.purchasePrice || 0}</span>
+                      </div>
+                    </td>
                     <td className="px-6 py-4">
                       <span className={`px-2.5 py-1 rounded-md text-xs font-bold ${
                         book.quantity > 5 ? 'bg-green-100 text-green-700' :

@@ -1,25 +1,41 @@
-import mongoose  from "mongoose";
+import mongoose from "mongoose";
 
 const bookSchema = new mongoose.Schema({
     title: {
         type: String,
         required: true,
-        trim : true,
+        trim: true,
     },
     author: {
         type: String,
         required: true,
         trim: true,
     },
+    // Adding category (highly recommended for both the UI Catalog and AI context)
+    category: {
+        type: String,
+        required: true,
+        trim: true,
+    },
     description: {
         type: String,
-        required:true,
+        // Optional: You might want to remove 'required: true' later if you 
+        // want the database to allow saving while the AI is still generating the text.
+        required: true, 
     },
-    price: {
+    
+    // 💵 PRICING SPLIT (Replaced single 'price' field)
+    rentPrice: {
         type: Number,
         required: true,
         default: 0,
     },
+    purchasePrice: {
+        type: Number,
+        required: true,
+        default: 0,
+    },
+    
     quantity: {
         type: Number,
         required: true,
@@ -29,20 +45,18 @@ const bookSchema = new mongoose.Schema({
         default: true,
     },
     frontCover: {
-        public_id: {
-            type: String,
-        },
-        url: {
-            type: String,
-        }
+        public_id: { type: String },
+        url: { type: String }
     },
     bookPdf: {
         public_id: { type: String },
         url: { type: String }
     },
 
-}
-, {
+    embedding: { 
+        type: [Number], 
+    }
+}, {
     timestamps: true,
 });
 

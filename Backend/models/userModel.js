@@ -2,6 +2,11 @@ import mongoose from "mongoose";
 import jwt from "jsonwebtoken"; 
 import crypto from "crypto";
 
+// Custom validator to ensure max 5 preferences for RAG
+function arrayLimit(val) {
+  return val.length <= 5;
+}
+
 const userSchema = new mongoose.Schema({
     name: {
         type: String,
@@ -42,6 +47,26 @@ const userSchema = new mongoose.Schema({
         dueDate: Date,
        }
     ],
+    // 🛍️ NEW: Purchased Books Array (No due dates, lifetime access)
+    purchasedBooks: [
+        {
+            bookId: {
+                type: mongoose.Schema.Types.ObjectId,
+                ref: "Book"
+            },
+            bookTitle: String,
+            purchaseDate: {
+                type: Date,
+                default: Date.now
+            }
+        }
+    ],
+    // 🤖 NEW: RAG User Preferences Array (Max 5 elements)
+    preferences: {
+        type: [String],
+        validate: [arrayLimit, 'You can only have up to 5 preferences'],
+        default: []
+    },
     avatar: {
         public_id: String,
         url: String
@@ -79,6 +104,7 @@ userSchema.methods.getJWTToken = function(){
         expiresIn: process.env.JWT_EXPIRE,
     })
 }
+
 userSchema.methods.getResetPasswordToken  = function(){
     const resetToken = crypto.randomBytes(20).toString("hex");
     this.resetPasswordToken = crypto
@@ -88,7 +114,6 @@ userSchema.methods.getResetPasswordToken  = function(){
     this.resetPasswordTokenExpire = Date.now()+ 30*60*1000;
 
     return resetToken;
-
 } 
 
 export const User = mongoose.model("User",userSchema);

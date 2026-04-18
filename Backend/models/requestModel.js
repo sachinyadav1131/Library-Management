@@ -17,7 +17,12 @@ const requestSchema = new mongoose.Schema({
             required: true 
         },
         title: { type: String, required: true },
-        price: { type: Number, required: true },
+        price: { type: Number, required: true }, // This will hold either rentPrice or purchasePrice
+    },
+    requestType: {
+        type: String,
+        enum: ["Borrow", "Purchase"], 
+        required: true,
     },
     status: {
         type: String,

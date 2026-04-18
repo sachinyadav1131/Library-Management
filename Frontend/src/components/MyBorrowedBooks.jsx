@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { BookMarked, Clock, CheckCircle, AlertCircle, Calendar, BookOpen } from "lucide-react";
+import { BookMarked, Clock, CheckCircle, AlertCircle, Calendar, BookOpen, ShoppingBag, Library } from "lucide-react";
+import { toast } from "react-toastify";
 
 // Import your existing ReadBookPopup and the getAllBooks action
 import ReadBookPopup from "../popups/ReadBookPopup"; 
@@ -9,26 +10,30 @@ import { getAllBooks } from "../store/slices/bookSlice";
 const MyBorrowedBooks = () => {
   const dispatch = useDispatch();
 
-  // Grab BOTH user and books from the Redux store
   const { user } = useSelector((state) => state.auth);
   const { books } = useSelector((state) => state.books);
   
-  // State to track which book the user wants to read
+  // States for Tabs and PDF Reader
+  const [activeTab, setActiveTab] = useState("rented"); // "rented" or "purchased"
   const [bookToRead, setBookToRead] = useState(null);
   
-  // Fetch books on mount so we have the full data (including PDFs) loaded
   useEffect(() => {
     dispatch(getAllBooks());
   }, [dispatch]);
 
+  // 1. Extract and Sort Rented Books
   const borrowedBooks = user?.borrowedBooks || [];
-
-  // Sort books so that currently borrowed/overdue books are at the top
-  const sortedBooks = [...borrowedBooks].sort((a, b) => {
+  const sortedRentedBooks = [...borrowedBooks].sort((a, b) => {
     if (a.returned === b.returned) {
       return new Date(b.dueDate) - new Date(a.dueDate); 
     }
     return a.returned ? 1 : -1; 
+  });
+
+  // 2. Extract and Sort Purchased Books
+  const purchasedBooks = user?.purchasedBooks || [];
+  const sortedPurchasedBooks = [...purchasedBooks].sort((a, b) => {
+    return new Date(b.purchaseDate) - new Date(a.purchaseDate);
   });
 
   const getStatusBadge = (returned, dueDate) => {
@@ -48,7 +53,7 @@ const MyBorrowedBooks = () => {
     }
     return (
       <span className="px-3 py-1 bg-blue-50 text-blue-700 border border-blue-200 rounded-full text-xs font-bold flex items-center gap-1.5 w-fit">
-        <Clock size={14} /> Borrowed
+        <Clock size={14} /> Rented
       </span>
     );
   };
@@ -57,109 +62,166 @@ const MyBorrowedBooks = () => {
     <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
       
       {/* Header Section */}
-      <div className="mb-6 border-b border-gray-100 pb-4">
-        <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
-          <BookMarked className="text-blue-600" /> My Reading History
+      <div className="mb-6 pb-4">
+        <h2 className="text-2xl font-black text-gray-900 flex items-center gap-2 mb-1">
+          <Library className="text-blue-600" size={28} /> My Library
         </h2>
-        <p className="text-sm text-gray-500 mt-1">
-          Track your current borrowed books and past reads.
+        <p className="text-sm text-gray-500">
+          Manage your rented physical books and read your purchased e-books.
         </p>
       </div>
 
-      {/* Borrowed Books List */}
-      <div className="space-y-4">
-        {sortedBooks.length === 0 ? (
-          <div className="text-center py-12 bg-gray-50 rounded-xl border border-dashed border-gray-200">
-            <BookMarked className="mx-auto h-12 w-12 text-gray-300 mb-3" />
-            <h3 className="text-lg font-medium text-gray-900">No books borrowed yet</h3>
-            <p className="mt-1 text-gray-500 text-sm">
-              Head over to the Catalog to find your first read!
-            </p>
+      {/* Tabs Navigation */}
+      <div className="flex gap-6 border-b border-gray-200 mb-6">
+        <button 
+          onClick={() => setActiveTab("rented")}
+          className={`pb-3 font-bold text-sm tracking-wide transition-colors relative ${
+            activeTab === "rented" ? "text-blue-600" : "text-gray-400 hover:text-gray-600"
+          }`}
+        >
+          <div className="flex items-center gap-2">
+            <BookMarked size={18} /> RENTED BOOKS
           </div>
-        ) : (
-          sortedBooks.map((record) => (
-            <div 
-              key={record._id} 
-              className={`p-5 rounded-xl border transition-all duration-200 flex flex-col md:flex-row md:items-center justify-between gap-4 ${
-                !record.returned && new Date() > new Date(record.dueDate)
-                  ? 'bg-red-50/30 border-red-100' 
-                  : 'bg-white border-gray-100 hover:border-blue-100 hover:shadow-md'
-              }`}
-            >
-              {/* Left Side: Book Info */}
-              <div className="flex items-start gap-4">
-                <div className="w-12 h-16 bg-gradient-to-br from-blue-100 to-indigo-50 rounded shadow-sm flex items-center justify-center flex-shrink-0 border border-blue-100/50">
-                  <BookMarked className="text-blue-300 w-6 h-6" />
-                </div>
-                <div>
-                  <h4 className="font-bold text-gray-900 text-lg line-clamp-1">{record.bookTitle}</h4>
-                  
-                  <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-2 text-sm text-gray-600">
-                    <span className="flex items-center gap-1.5">
-                      <Calendar size={14} className="text-gray-400" />
-                      <span className="font-medium text-gray-500">Borrowed:</span> 
-                      {new Date(record.borrowedDate).toLocaleDateString()}
-                    </span>
-                    <span className="flex items-center gap-1.5">
-                      <Clock size={14} className="text-gray-400" />
-                      <span className="font-medium text-gray-500">Due:</span> 
-                      <span className={!record.returned && new Date() > new Date(record.dueDate) ? 'text-red-600 font-bold' : ''}>
-                        {new Date(record.dueDate).toLocaleDateString()}
+          {activeTab === "rented" && <div className="absolute bottom-[-1px] left-0 w-full h-0.5 bg-blue-600 rounded-t-full"></div>}
+        </button>
+
+        <button 
+          onClick={() => setActiveTab("purchased")}
+          className={`pb-3 font-bold text-sm tracking-wide transition-colors relative ${
+            activeTab === "purchased" ? "text-green-600" : "text-gray-400 hover:text-gray-600"
+          }`}
+        >
+          <div className="flex items-center gap-2">
+            <ShoppingBag size={18} /> PURCHASED E-BOOKS
+          </div>
+          {activeTab === "purchased" && <div className="absolute bottom-[-1px] left-0 w-full h-0.5 bg-green-600 rounded-t-full"></div>}
+        </button>
+      </div>
+
+      {/* ======================================= */}
+      {/* TAB CONTENT: RENTED BOOKS (Physical)    */}
+      {/* ======================================= */}
+      {activeTab === "rented" && (
+        <div className="space-y-4 animate-fadeIn">
+          {sortedRentedBooks.length === 0 ? (
+            <div className="text-center py-12 bg-gray-50 rounded-xl border border-dashed border-gray-200">
+              <BookMarked className="mx-auto h-12 w-12 text-gray-300 mb-3" />
+              <h3 className="text-lg font-medium text-gray-900">No rented books yet</h3>
+              <p className="mt-1 text-gray-500 text-sm">Rent physical books from the catalog.</p>
+            </div>
+          ) : (
+            sortedRentedBooks.map((record) => (
+              <div 
+                key={record._id} 
+                className={`p-5 rounded-xl border transition-all duration-200 flex flex-col md:flex-row md:items-center justify-between gap-4 ${
+                  !record.returned && new Date() > new Date(record.dueDate)
+                    ? 'bg-red-50/30 border-red-100' 
+                    : 'bg-white border-gray-100'
+                }`}
+              >
+                <div className="flex items-start gap-4">
+                  <div className="w-12 h-16 bg-gradient-to-br from-blue-100 to-indigo-50 rounded shadow-sm flex items-center justify-center flex-shrink-0 border border-blue-100/50">
+                    <BookMarked className="text-blue-400 w-6 h-6" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-gray-900 text-lg line-clamp-1">{record.bookTitle}</h4>
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-2 text-sm text-gray-600">
+                      <span className="flex items-center gap-1.5">
+                        <Calendar size={14} className="text-gray-400" />
+                        <span className="font-medium text-gray-500">Rented:</span> 
+                        {new Date(record.borrowedDate).toLocaleDateString()}
                       </span>
-                    </span>
+                      <span className="flex items-center gap-1.5">
+                        <Clock size={14} className="text-gray-400" />
+                        <span className="font-medium text-gray-500">Due:</span> 
+                        <span className={!record.returned && new Date() > new Date(record.dueDate) ? 'text-red-600 font-bold' : ''}>
+                          {new Date(record.dueDate).toLocaleDateString()}
+                        </span>
+                      </span>
+                    </div>
                   </div>
                 </div>
+
+                <div className="flex flex-col items-end justify-center gap-3">
+                  {getStatusBadge(record.returned, record.dueDate)}
+                  {!record.returned && new Date() > new Date(record.dueDate) && (
+                    <span className="text-xs text-red-500 font-medium">Return required (Fines applying)</span>
+                  )}
+                  {/* NO READ BUTTON HERE - Physical Only */}
+                </div>
               </div>
+            ))
+          )}
+        </div>
+      )}
 
-              {/* Right Side: Status Badge & Actions */}
-              <div className="flex flex-col items-end justify-center gap-3">
-                {getStatusBadge(record.returned, record.dueDate)}
-                
-                {/* Notice for overdue books */}
-                {!record.returned && new Date() > new Date(record.dueDate) && (
-                  <span className="text-xs text-red-500 font-medium">
-                    Please return this book to avoid fines.
-                  </span>
-                )}
+      {/* ======================================= */}
+      {/* TAB CONTENT: PURCHASED BOOKS (E-Books)  */}
+      {/* ======================================= */}
+      {activeTab === "purchased" && (
+        <div className="space-y-4 animate-fadeIn">
+          {sortedPurchasedBooks.length === 0 ? (
+            <div className="text-center py-12 bg-gray-50 rounded-xl border border-dashed border-gray-200">
+              <ShoppingBag className="mx-auto h-12 w-12 text-gray-300 mb-3" />
+              <h3 className="text-lg font-medium text-gray-900">No purchased e-books</h3>
+              <p className="mt-1 text-gray-500 text-sm">Buy a book from the catalog to read the PDF here.</p>
+            </div>
+          ) : (
+            sortedPurchasedBooks.map((record) => (
+              <div 
+                key={record._id} 
+                className="p-5 rounded-xl border bg-white border-gray-100 hover:border-green-100 hover:shadow-md transition-all duration-200 flex flex-col md:flex-row md:items-center justify-between gap-4"
+              >
+                <div className="flex items-start gap-4">
+                  <div className="w-12 h-16 bg-gradient-to-br from-green-100 to-emerald-50 rounded shadow-sm flex items-center justify-center flex-shrink-0 border border-green-100/50">
+                    <BookOpen className="text-green-500 w-6 h-6" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-gray-900 text-lg line-clamp-1">{record.bookTitle}</h4>
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-2 text-sm text-gray-600">
+                      <span className="flex items-center gap-1.5">
+                        <Calendar size={14} className="text-gray-400" />
+                        <span className="font-medium text-gray-500">Purchased on:</span> 
+                        {new Date(record.purchaseDate).toLocaleDateString()}
+                      </span>
+                      <span className="px-2 py-0.5 bg-gray-100 text-gray-600 rounded text-[10px] font-bold uppercase tracking-wider">
+                        Lifetime Access
+                      </span>
+                    </div>
+                  </div>
+                </div>
 
-                {/* Read Now Button (Only visible if the book is actively borrowed) */}
-                {/* Read Now Button */}
-                {!record.returned && (
+                <div className="flex flex-col items-end justify-center">
                   <button 
                     onClick={() => {
-                      // 🚀 THE BULLETPROOF SEARCH
-                      // Try to find the book by ID first, but if that fails, match it by the Title!
+                      // Bulletproof PDF retrieval
                       const fullBookData = books?.find((b) => 
-                        String(b._id) === String(record.book) || 
-                        String(b._id) === String(record.bookId) ||
+                        String(b._id) === String(record.bookId) || 
                         b.title?.toLowerCase() === record.bookTitle?.toLowerCase()
                       );
                       
-                      if (fullBookData && fullBookData.bookPdf) {
+                      if (fullBookData && fullBookData.bookPdf?.url) {
                         setBookToRead(fullBookData); 
                       } else if (fullBookData) {
-                        // We found the book, but the Admin genuinely hasn't uploaded a PDF yet
-                        setBookToRead(fullBookData);
+                        toast.info("No PDF attached to this book yet. Please contact Admin.");
                       } else {
-                        // If it STILL can't find it, the books haven't finished loading from the backend yet
-                        alert("Still loading book data... Please wait a second and try again!");
+                        toast.warning("Still loading book data... Please try again in a moment.");
                       }
                     }}
-                    className="px-4 py-2 bg-blue-600 text-white text-sm font-bold rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 shadow-sm"
+                    className="px-6 py-2.5 bg-gray-900 text-white text-sm font-bold uppercase tracking-wide rounded-xl hover:bg-black active:scale-95 transition-all flex items-center gap-2 shadow-lg"
                   >
-                    <BookOpen size={16} /> Read Now
+                    <BookOpen size={16} /> Read E-Book
                   </button>
-                )}
+                </div>
               </div>
+            ))
+          )}
+        </div>
+      )}
 
-            </div>
-          ))
-        )}
-      </div>
-
-      {/* Safely render the ReadBookPopup at the bottom of the component */}
+      {/* Read PDF Modal */}
       <ReadBookPopup 
-        isOpen={!!bookToRead} // Converts the object to true/false
+        isOpen={!!bookToRead}
         onClose={() => setBookToRead(null)} 
         book={bookToRead} 
       />

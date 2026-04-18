@@ -37,13 +37,18 @@ const requestSlice = createSlice({
 });
 
 // THUNKS
-export const createRequest = (bookId) => async (dispatch) => {
+// 👈 Now accepts requestType ("Borrow" or "Purchase")
+export const createRequest = (bookId, requestType) => async (dispatch) => { 
   dispatch(requestSlice.actions.requestActionRequest());
   try {
-    const { data } = await axios.post(`http://localhost:4000/api/v1/request/send/${bookId}`, {}, { withCredentials: true });
+    const { data } = await axios.post(
+      `http://localhost:4000/api/v1/request/send/${bookId}`, 
+      { requestType }, // 👈 Sent in req.body
+      { withCredentials: true }
+    );
     dispatch(requestSlice.actions.requestActionSuccess(data.message));
   } catch (error) {
-    dispatch(requestSlice.actions.requestActionFailed(error.response.data.message));
+    dispatch(requestSlice.actions.requestActionFailed(error.response?.data?.message || "An error occurred"));
   }
 };
 
@@ -53,17 +58,21 @@ export const getAllRequests = () => async (dispatch) => {
     const { data } = await axios.get("http://localhost:4000/api/v1/request/all", { withCredentials: true });
     dispatch(requestSlice.actions.getAllRequestsSuccess(data.requests));
   } catch (error) {
-    dispatch(requestSlice.actions.requestActionFailed(error.response.data.message));
+    dispatch(requestSlice.actions.requestActionFailed(error.response?.data?.message || "An error occurred"));
   }
 };
 
 export const manageRequest = (requestId, action) => async (dispatch) => {
   dispatch(requestSlice.actions.requestActionRequest());
   try {
-    const { data } = await axios.put(`http://localhost:4000/api/v1/request/manage/${requestId}`, { action }, { withCredentials: true });
+    const { data } = await axios.put(
+      `http://localhost:4000/api/v1/request/manage/${requestId}`, 
+      { action }, 
+      { withCredentials: true }
+    );
     dispatch(requestSlice.actions.requestActionSuccess(data.message));
   } catch (error) {
-    dispatch(requestSlice.actions.requestActionFailed(error.response.data.message));
+    dispatch(requestSlice.actions.requestActionFailed(error.response?.data?.message || "An error occurred"));
   }
 };
 

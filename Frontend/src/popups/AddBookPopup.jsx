@@ -11,11 +11,12 @@ const AddBookPopup = ({ isOpen, onClose, bookToEdit }) => {
 
   const [title, setTitle] = useState("");
   const [author, setAuthor] = useState("");
-  const [price, setPrice] = useState("");
+  const [category, setCategory] = useState(""); // 👈 Added Category
+  const [rentPrice, setRentPrice] = useState(""); // 👈 Added Rent Price
+  const [purchasePrice, setPurchasePrice] = useState(""); // 👈 Added Purchase Price
   const [quantity, setQuantity] = useState("");
   const [description, setDescription] = useState("");
   
-  // 👈 New states for the image
   const [frontCover, setFrontCover] = useState("");
   const [frontCoverPreview, setFrontCoverPreview] = useState("");
   const [bookPdf, setBookPdf] = useState("");
@@ -24,22 +25,26 @@ const AddBookPopup = ({ isOpen, onClose, bookToEdit }) => {
     if (bookToEdit) {
       setTitle(bookToEdit.title || "");
       setAuthor(bookToEdit.author || "");
-      setPrice(bookToEdit.price || "");
+      setCategory(bookToEdit.category || "");
+      setRentPrice(bookToEdit.rentPrice || "");
+      setPurchasePrice(bookToEdit.purchasePrice || "");
       setQuantity(bookToEdit.quantity || "");
       setDescription(bookToEdit.description || "");
       
-      // If editing, show existing cover if it exists
       if(bookToEdit.frontCover?.url) {
         setFrontCoverPreview(bookToEdit.frontCover.url);
       }
     } else {
       setTitle("");
       setAuthor("");
-      setPrice("");
+      setCategory("");
+      setRentPrice("");
+      setPurchasePrice("");
       setQuantity("");
       setDescription("");
       setFrontCover("");
       setFrontCoverPreview("");
+      setBookPdf(""); // Ensure PDF clears on close
     }
   }, [bookToEdit, isOpen]);
 
@@ -58,12 +63,11 @@ const AddBookPopup = ({ isOpen, onClose, bookToEdit }) => {
     }
   }, [dispatch, error, message, isOpen, onClose]);
 
-  // 👈 Function to handle the image selection
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
       setFrontCover(file);
-      setFrontCoverPreview(URL.createObjectURL(file)); // Creates a local temporary URL for preview
+      setFrontCoverPreview(URL.createObjectURL(file)); 
     }
   };
 
@@ -74,28 +78,25 @@ const AddBookPopup = ({ isOpen, onClose, bookToEdit }) => {
     }
   };
 
-const handleSubmit = (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
     
-    // Create FormData instead of JSON!
     const formData = new FormData();
     formData.append("title", title);
     formData.append("author", author);
-    formData.append("price", Number(price));
+    formData.append("category", category); // 👈 Included
+    formData.append("rentPrice", Number(rentPrice)); // 👈 Included
+    formData.append("purchasePrice", Number(purchasePrice)); // 👈 Included
     formData.append("quantity", Number(quantity));
     formData.append("description", description);
     
-    // Only append the image if the Admin actually selected a new one
     if (frontCover) {
       formData.append("frontCover", frontCover);
     }
 
-    // 👇 ADD THIS MISSING BLOCK!
-    // Append the PDF if the Admin selected one
     if (bookPdf) {
       formData.append("bookPdf", bookPdf);
     }
-    // 👆 =======================
 
     if (bookToEdit) {
       dispatch(updateBook(bookToEdit._id, formData));
@@ -108,7 +109,7 @@ const handleSubmit = (e) => {
 
   return createPortal(
     <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fadeIn">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden max-h-[90vh] flex flex-col">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden max-h-[90vh] flex flex-col">
         
         <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50 flex-shrink-0">
           <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2">
@@ -123,7 +124,7 @@ const handleSubmit = (e) => {
         <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto custom-scrollbar">
           
           {/* 🖼️ IMAGE UPLOAD AREA */}
-          <div className="col-span-2 bg-gray-50 p-4 rounded-xl border border-gray-200">
+          <div className="bg-gray-50 p-4 rounded-xl border border-gray-200">
             <label className="block text-sm font-bold text-gray-700 mb-2">Front Cover Image</label>
             <div className="flex items-center gap-4">
               {frontCoverPreview ? (
@@ -147,7 +148,7 @@ const handleSubmit = (e) => {
             <input
               type="file"
               accept="application/pdf"
-              onChange={(e) => setBookPdf(e.target.files[0])}
+              onChange={handlePdfChange}
               className="w-full text-sm text-gray-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-red-100 file:text-red-700 hover:file:bg-red-200 transition-colors cursor-pointer"
             />
             {bookToEdit?.bookPdf?.url && !bookPdf && (
@@ -159,20 +160,33 @@ const handleSubmit = (e) => {
             <label className="block text-sm font-medium text-gray-700 mb-1">Book Title</label>
             <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} required className="w-full px-4 py-2 border rounded-lg focus:ring-blue-500" />
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Author Name</label>
-            <input type="text" value={author} onChange={(e) => setAuthor(e.target.value)} required className="w-full px-4 py-2 border rounded-lg focus:ring-blue-500" />
-          </div>
+
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Price (₹)</label>
-              <input type="number" min="0" value={price} onChange={(e) => setPrice(e.target.value)} required className="w-full px-4 py-2 border rounded-lg focus:ring-blue-500" />
+              <label className="block text-sm font-medium text-gray-700 mb-1">Author Name</label>
+              <input type="text" value={author} onChange={(e) => setAuthor(e.target.value)} required className="w-full px-4 py-2 border rounded-lg focus:ring-blue-500" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Category / Genre</label>
+              <input type="text" value={category} onChange={(e) => setCategory(e.target.value)} required placeholder="e.g. Sci-Fi, Programming" className="w-full px-4 py-2 border rounded-lg focus:ring-blue-500" />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-3 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Rent Price (₹)</label>
+              <input type="number" min="0" value={rentPrice} onChange={(e) => setRentPrice(e.target.value)} required className="w-full px-4 py-2 border rounded-lg focus:ring-blue-500" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Buy Price (₹)</label>
+              <input type="number" min="0" value={purchasePrice} onChange={(e) => setPurchasePrice(e.target.value)} required className="w-full px-4 py-2 border rounded-lg focus:ring-blue-500" />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Total Stock</label>
               <input type="number" min="0" value={quantity} onChange={(e) => setQuantity(e.target.value)} required className="w-full px-4 py-2 border rounded-lg focus:ring-blue-500" />
             </div>
           </div>
+          
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
             <textarea value={description} onChange={(e) => setDescription(e.target.value)} required className="w-full px-4 py-2 border rounded-lg focus:ring-blue-500 h-24 resize-none" />

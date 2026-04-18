@@ -121,10 +121,11 @@ const Catalog = () => {
                 </p>
 
                 {/* Footer of Card */}
-                <div className="pt-4 border-t border-gray-100 flex justify-between items-center mt-auto">
-                  <span className="text-lg font-bold text-gray-900">
-                    ₹{book.price}
-                  </span>
+                <div className="pt-4 border-t border-gray-100 flex justify-between items-end mt-auto">
+                  <div className="flex flex-col gap-0.5">
+                    <span className="text-sm font-bold text-blue-600">Rent: ₹{book.rentPrice || 0}</span>
+                    <span className="text-sm font-bold text-green-600">Buy: ₹{book.purchasePrice || 0}</span>
+                  </div>
                   <button
                     onClick={() => setSelectedBook(book)}
                     disabled={book.quantity === 0}
