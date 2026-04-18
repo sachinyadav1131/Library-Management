@@ -1,120 +1,93 @@
-import React, { useState } from "react";
-import { createPortal } from "react-dom";
-import { useSelector } from "react-redux";
-import { X, BookOpen, User, Tag, IndianRupee } from "lucide-react";
-import RecordBookPopup from "./RecordBookPopup";
+import React, { useEffect } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import { X } from "lucide-react";
+import { createRequest, clearErrors, clearMessage } from "../store/slices/requestSlice"; 
+import { toast } from "react-toastify";
 
 const BookDetailsPopup = ({ book, onClose }) => {
+  const dispatch = useDispatch();
   const { user } = useSelector((state) => state.auth);
-  const [isRecordPopupOpen, setIsRecordPopupOpen] = useState(false);
+  
+  // 👈 Get message and error from the requests slice
+  const { loading, error, message } = useSelector((state) => state.requests); 
+
+  const handleBorrowRequest = () => {
+    if (!user) {
+      return toast.error("Please login to request a book");
+    }
+    dispatch(createRequest(book._id));
+  };
+
+  // 👈 Monitor the request status
+  useEffect(() => {
+    if (error) {
+      toast.error(error);
+      dispatch(clearErrors());
+    }
+    if (message) {
+      toast.success(message);
+      dispatch(clearMessage());
+      onClose(); // Close the popup automatically on success
+    }
+  }, [dispatch, error, message, onClose]);
 
   if (!book) return null;
 
-  return createPortal(
-    <>
-      <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fadeIn">
-        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
-          
-          {/* Header */}
-          <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
-            <h3 className="text-xl font-bold text-gray-800 flex items-center gap-2">
-              <BookOpen className="text-blue-600" /> Book Details
-            </h3>
-            <button 
-              onClick={onClose} 
-              className="text-gray-400 hover:text-red-500 transition-colors p-1 rounded-md hover:bg-red-50"
-            >
-              <X size={24} />
-            </button>
-          </div>
+  return (
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fadeIn">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden relative flex flex-col md:flex-row">
+        
+        <button onClick={onClose} className="absolute top-4 right-4 z-10 p-2 bg-white/80 rounded-full hover:bg-red-50 hover:text-red-600 transition-all shadow-md">
+          <X size={20} />
+        </button>
 
-          {/* Content Body (Scrollable) */}
-          <div className="p-6 overflow-y-auto custom-scrollbar flex-1">
-            <div className="flex flex-col md:flex-row gap-8">
-              
-              {/* Left Column: Book Cover Placeholder */}
-              <div className="w-full md:w-1/3 flex flex-col gap-4">
-                <div className="aspect-[3/4] bg-gradient-to-br from-blue-50 to-indigo-100 rounded-xl border border-blue-100 flex items-center justify-center shadow-inner">
-                  <BookOpen className="w-20 h-20 text-blue-300" />
-                </div>
-                
-                <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 space-y-3">
-                  <div className="flex justify-between items-center text-sm">
-                    <span className="text-gray-500 flex items-center gap-1"><IndianRupee size={14}/> Price</span>
-                    <span className="font-bold text-gray-900">₹{book.price}</span>
-                  </div>
-                  <div className="flex justify-between items-center text-sm">
-                    <span className="text-gray-500 flex items-center gap-1"><Tag size={14}/> Status</span>
-                    <span className={`px-2 py-0.5 rounded-md font-bold ${book.quantity > 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                      {book.quantity > 0 ? 'In Stock' : 'Out of Stock'}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center text-sm">
-                    <span className="text-gray-500">Available</span>
-                    <span className="font-bold text-gray-900">{book.quantity} copies</span>
-                  </div>
-                </div>
-              </div>
+        <div className="md:w-1/2 bg-gray-100 flex items-center justify-center p-8">
+          <img src={book.image?.url} alt={book.title} className="w-full max-w-[220px] rounded-lg shadow-2xl transform hover:scale-105 transition-transform duration-500" />
+        </div>
 
-              {/* Right Column: Book Info */}
-              <div className="w-full md:w-2/3 space-y-6">
+        <div className="md:w-1/2 p-8 flex flex-col justify-between">
+          <div>
+            <span className="inline-block px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest bg-blue-100 text-blue-700 mb-4">
+              {book.category}
+            </span>
+            <h2 className="text-3xl font-black text-gray-900 leading-tight mb-2">{book.title}</h2>
+            <p className="text-gray-500 italic mb-6">by <span className="text-gray-800 font-semibold">{book.author}</span></p>
+            
+            <div className="space-y-4 mb-8">
+              <p className="text-gray-600 text-sm leading-relaxed">{book.description}</p>
+              <div className="flex items-center gap-6">
                 <div>
-                  <h1 className="text-2xl font-extrabold text-gray-900 mb-2">{book.title}</h1>
-                  <p className="text-lg text-blue-600 font-medium flex items-center gap-2">
-                    <User size={18} /> {book.author}
-                  </p>
+                  <p className="text-[10px] text-gray-400 uppercase font-bold">Price</p>
+                  <p className="text-xl font-bold text-green-600">₹{book.price}</p>
                 </div>
-
                 <div>
-                  <h4 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-2 border-b pb-1">Synopsis</h4>
-                  <p className="text-gray-600 leading-relaxed text-sm whitespace-pre-line">
-                    {book.description}
-                  </p>
+                  <p className="text-[10px] text-gray-400 uppercase font-bold">In Stock</p>
+                  <p className="text-xl font-bold text-gray-800">{book.quantity} copies</p>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Footer Actions */}
-          <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex justify-end gap-3">
-            <button 
-              onClick={onClose}
-              className="px-5 py-2.5 text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 rounded-lg transition-colors font-medium"
-            >
-              Close
-            </button>
-            
-            {/* Conditional Button based on Role */}
+          <div className="pt-4 border-t border-gray-100">
             {user?.role === "Admin" ? (
-              <button 
-                disabled={book.quantity === 0}
-                onClick={() => setIsRecordPopupOpen(true)}
-                className="px-6 py-2.5 text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors font-medium disabled:bg-gray-400 disabled:cursor-not-allowed shadow-sm"
-              >
-                {book.quantity === 0 ? "Unavailable" : "Issue to User"}
-              </button>
+              <p className="text-sm text-gray-400 italic text-center">Admins manage inventory via Dashboard</p>
             ) : (
-              <button 
-                disabled
-                title="Please visit the librarian desk to check out this book."
-                className="px-6 py-2.5 text-white bg-gray-400 rounded-lg font-medium cursor-not-allowed shadow-sm"
+              <button
+                onClick={handleBorrowRequest}
+                disabled={loading || book.quantity === 0}
+                className={`w-full py-4 rounded-xl font-black text-sm uppercase tracking-widest transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2 ${
+                  book.quantity > 0 
+                  ? "bg-gray-900 text-white hover:bg-black" 
+                  : "bg-gray-200 text-gray-400 cursor-not-allowed"
+                }`}
               >
-                {book.quantity === 0 ? "Unavailable" : "Available at Desk"}
+                {loading ? "Processing..." : book.quantity > 0 ? "Request to Borrow" : "Out of Stock"}
               </button>
             )}
           </div>
-
         </div>
       </div>
-
-      {/* Render the Issue Popup on top of this one if Admin clicks the button */}
-      <RecordBookPopup 
-        isOpen={isRecordPopupOpen} 
-        onClose={() => setIsRecordPopupOpen(false)} 
-        book={book} 
-      />
-    </>,
-    document.body
+    </div>
   );
 };
 

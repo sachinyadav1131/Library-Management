@@ -13,6 +13,7 @@ import Catalog from "../components/Catalog";
 import MyBorrowedBooks from "../components/MyBorrowedBooks";
 import BookManagement from "../components/BookManagement";
 import Users from "../components/Users";
+import BorrowRequests from "../components/borrowRequest";
 
 const Home = () => {
   const [isSideBarOpen, setIsSideBarOpen] = useState(false);
@@ -46,6 +47,9 @@ const Home = () => {
         return <Users />;
       case "MyBorrowedBooks":
         return <MyBorrowedBooks />;
+      
+      case "BorrowRequests":
+      return <BorrowRequests />;
       default:
         return user?.role === "Admin" ? <AdminDashboard /> : <UserDashboard />;
     }

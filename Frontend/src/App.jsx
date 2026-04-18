@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { useDispatch } from "react-redux";
 import { getUser } from "./store/slices/authSlice";
 import { getAllBooks } from "./store/slices/bookSlice"; // Added for header math
+import BorrowRequests from "./components/borrowRequest";
 
 // --- IMPORTANT: ALL PAGE IMPORTS ---
 import Home from "./pages/Home"; 
@@ -34,6 +35,7 @@ const App = () => {
         <Route path="/password/forgot" element={<ForgotPassword/>} />
         <Route path="/otp-verification/:email" element={<OTP/>} />
         <Route path="/password/reset/:token" element={<ResetPassword/>} />
+        <Route path="/admin/borrow-requests" element={<BorrowRequests />} />
       </Routes>
       <ToastContainer theme="dark" position="bottom-right"/>
     </Router>

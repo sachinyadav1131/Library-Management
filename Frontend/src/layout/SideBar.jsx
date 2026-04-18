@@ -12,7 +12,8 @@ import {
   Settings, 
   LogOut, 
   X,
-  BookMarked
+  BookMarked,
+  GitPullRequest // 👈 Added for Borrow Requests
 } from "lucide-react";
 
 // Redux Actions
@@ -96,7 +97,6 @@ const SideBar = ({ isSideBarOpen, setIsSideBarOpen, selectedComponent, setSelect
             <span>Dashboard</span>
           </button>
 
-          {/* Catalog is available to everyone */}
           <button
             onClick={() => {
               setSelectedComponent("Catalog");
@@ -113,6 +113,18 @@ const SideBar = ({ isSideBarOpen, setIsSideBarOpen, selectedComponent, setSelect
           {/* ========================================== */}
           {isAuthenticated && user?.role === "Admin" && (
             <>
+              {/* 🟢 NEW: Borrow Requests Link */}
+              <button
+                onClick={() => {
+                  setSelectedComponent("BorrowRequests");
+                  setIsSideBarOpen(false);
+                }}
+                className={getNavItemClass("BorrowRequests")}
+              >
+                <GitPullRequest className="w-5 h-5 text-amber-400" /> 
+                <span>Borrow Requests</span>
+              </button>
+
               <button
                 onClick={() => {
                   setSelectedComponent("BookManagement");
@@ -148,7 +160,7 @@ const SideBar = ({ isSideBarOpen, setIsSideBarOpen, selectedComponent, setSelect
           )}
 
           {/* ========================================== */}
-          {/* USER ONLY LINKS                              */}
+          {/* USER ONLY LINKS                               */}
           {/* ========================================== */}
           {isAuthenticated && user?.role === "User" && (
             <button
