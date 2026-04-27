@@ -187,9 +187,29 @@ const AddBookPopup = ({ isOpen, onClose, bookToEdit }) => {
             </div>
           </div>
           
+          {/* ✨ AI-Aware Description Field */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-            <textarea value={description} onChange={(e) => setDescription(e.target.value)} required className="w-full px-4 py-2 border rounded-lg focus:ring-blue-500 h-24 resize-none" />
+            <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-2">
+              Description 
+              {bookPdf && (
+                <span className="text-xs text-purple-600 font-bold bg-purple-50 px-2 py-0.5 rounded-full flex items-center gap-1">
+                  ✨ AI Auto-Generate Enabled
+                </span>
+              )}
+            </label>
+            <textarea 
+              value={description} 
+              onChange={(e) => setDescription(e.target.value)} 
+              required={!bookPdf} // 👈 Only required if no PDF is selected!
+              placeholder={
+                bookPdf 
+                ? "Leave this blank and Gemini AI will write a professional description by reading your PDF!" 
+                : "Enter book description manually..."
+              }
+              className={`w-full px-4 py-2 border rounded-lg focus:ring-blue-500 h-24 resize-none transition-all ${
+                bookPdf ? "bg-purple-50/30 border-purple-200 placeholder:text-purple-300" : ""
+              }`} 
+            />
           </div>
 
           <div className="pt-4 flex gap-3 justify-end border-t border-gray-100 mt-2">

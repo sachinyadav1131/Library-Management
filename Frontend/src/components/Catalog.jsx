@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { Search, Library, BookOpen } from "lucide-react";
 import { getAllBooks, setSearchQuery } from "../store/slices/bookSlice"; 
 import BookDetailsPopup from "../popups/BookDetailsPopup";
+import { searchBooksWithAI } from "../store/slices/bookSlice";
 
 const Catalog = () => {
   const dispatch = useDispatch();
@@ -37,19 +38,44 @@ const Catalog = () => {
           </p>
         </div>
 
-        {/* Local Search Bar */}
-        <div className="relative w-full md:w-96">
-          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <Search className="h-5 w-5 text-gray-400" />
-          </div>
-          <input
-            type="text"
-            className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-all"
-            placeholder="Search by title or author..."
-            value={searchQuery || ""}
-            onChange={(e) => dispatch(setSearchQuery(e.target.value))}
-          />
-        </div>
+       {/* You will need to import searchBooksWithAI from your bookSlice at the top of the file! */}
+{/* import { getAllBooks, setSearchQuery, searchBooksWithAI } from "../store/slices/bookSlice";  */}
+
+{/* Local Search Bar & AI Button */}
+<div className="flex flex-col sm:flex-row w-full md:w-auto gap-3">
+  <div className="relative w-full md:w-80">
+    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+      <Search className="h-5 w-5 text-gray-400" />
+    </div>
+    <input
+      type="text"
+      className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-all"
+      placeholder="Search title, author, or vibe..."
+      value={searchQuery || ""}
+      onChange={(e) => {
+        dispatch(setSearchQuery(e.target.value));
+        // If they clear the search bar, fetch all normal books again
+        if (e.target.value === "") {
+          dispatch(getAllBooks());
+        }
+      }}
+    />
+  </div>
+  
+  {/* ✨ The Magic AI Search Button */}
+  <button 
+    onClick={() => {
+      if (searchQuery && searchQuery.trim() !== "") {
+        dispatch(searchBooksWithAI(searchQuery));
+      } else {
+        toast.info("Please enter a vibe or topic to search!");
+      }
+    }}
+    className="px-4 py-2 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white text-sm font-bold rounded-lg shadow-md transition-all flex items-center justify-center gap-2 whitespace-nowrap active:scale-95"
+  >
+    ✨ AI Vibe Search
+  </button>
+</div>
       </div>
 
       {/* Book Grid */}

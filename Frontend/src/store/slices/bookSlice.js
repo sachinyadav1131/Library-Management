@@ -153,6 +153,30 @@ export const deleteBook = (id) => async (dispatch) => {
   }
 };
 
+// ==========================================
+// ✨ AI SEMANTIC "VIBE" SEARCH ACTION
+// ==========================================
+export const searchBooksWithAI = (query) => async (dispatch) => {
+  // 👇 1. Use the existing getAllBooksRequest reducer
+  dispatch(bookSlice.actions.getAllBooksRequest()); 
+  try {
+    const { data } = await axios.get(
+      `http://localhost:4000/api/v1/book/semantic-search?query=${query}`,
+      { withCredentials: true }
+    );
+    // 👇 2. Use the existing getAllBooksSuccess reducer. 
+    // We pass 'data' directly because your backend already returns { success: true, books: [...] }
+    dispatch(bookSlice.actions.getAllBooksSuccess(data));
+  } catch (error) {
+    // 👇 3. Use the existing getAllBooksFailed reducer
+    dispatch(
+      bookSlice.actions.getAllBooksFailed(
+        error.response?.data?.message || "AI Search Failed"
+      )
+    );
+  }
+};
+
 
 export const { clearBookErrors, clearBookMessage, setSearchQuery } = bookSlice.actions;
 export default bookSlice.reducer;
