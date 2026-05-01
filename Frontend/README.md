@@ -1,6 +1,6 @@
-# React + Vite
+# Book-Depot
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+This frontend powers the Book-Depot e-book curated store. It was scaffolded from a React + Vite template and includes HMR and ESLint rules.
 
 Currently, two official plugins are available:
 
